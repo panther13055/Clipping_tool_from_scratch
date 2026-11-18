@@ -67,7 +67,7 @@ export default function Home() {
    draw();
    recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
    recorder.onerror=()=>{cleanup();setExporting(false);setPlaying(false);alert("Export failed. Try a shorter clip or lower resolution.");};
-   recorder.onstop=()=>{cleanup();setPlaying(false);setExporting(false);if(!chunks.length){alert("No video data was recorded. Please try again.");return;}const blob=new Blob(chunks,{type:mime});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=(file.name.replace(/\\.[^.]+$/,"")||"clip")+"-clipforge.webm";a.click();setTimeout(()=>URL.revokeObjectURL(url),1500);};
+   recorder.onstop=()=>{cleanup();setPlaying(false);setExporting(false);if(!chunks.length){alert("No video data was recorded. Please try again.");return;}const blob=new Blob(chunks,{type:mime});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=(file.name.replace(/\.[^.]+$/,"")||"clip")+"-clipforge.webm";a.click();setTimeout(()=>URL.revokeObjectURL(url),1500);};
    recorder.start(250);await v.play();setPlaying(true);
    const stopAtEnd=()=>{if(v.currentTime>=end-.04&&recorder.state!=="inactive"){v.pause();recorder.stop();}};
    v.addEventListener("timeupdate",stopAtEnd);
