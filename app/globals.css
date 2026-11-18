@@ -58,3 +58,7 @@
 .trim-controls label b{font:10px 'DM Mono';color:#e1e8f2}
 .trim-controls input{grid-column:1/-1;width:100%;accent-color:#4b96ff}
 .trim-controls small{color:#8290a2;font-size:9px}
+
+
+/* Live effect and colour grading controls */
+.effect-tile.effect-active{border-color:#5a9fff;background:#1c304b;color:#e7f2ff;box-shadow:inset 0 0 0 1px #5a9fff55}.grade-controls{display:flex;flex-direction:column;gap:13px;padding:12px;background:#191e26;border:1px solid #2a3442;border-radius:7px}.grade-controls label{display:grid;grid-template-columns:1fr auto;gap:7px;color:#b6c0ce;font-size:10px}.grade-controls label b{font:10px 'DM Mono';color:#e2eaf5}.grade-controls input{grid-column:1/-1;width:100%;accent-color:#579bff}.reset-grade{border:1px solid #344153;background:#202a38;color:#bcd4f4;padding:8px;border-radius:5px;font-size:10px}.reset-grade:hover{border-color:#5a9fff}
