@@ -1,5 +1,7 @@
 "use client";
 
+import type React from "react";
+
 import { useEffect, useRef, useState } from "react";
 import { AudioLines, Captions, ChevronDown, CircleHelp, Clapperboard, Command, Download, Film, FolderOpen, Gauge, Grid2X2, Layers3, LayoutTemplate, Maximize2, Mic2, MoreHorizontal, MousePointer2, Play, Plus, Scissors, Settings2, Sparkles, Square, WandSparkles, ZoomIn, Upload, Volume2, Video, X } from "lucide-react";
 
