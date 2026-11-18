@@ -95,7 +95,7 @@ export default function Home() {
    }else{audioUrl=URL.createObjectURL(file);}
    setTranscriptionStatus("Loading Whisper model (first run downloads it once)…");
    const {pipeline}=await import("@huggingface/transformers");
-   const transcriber=await pipeline("automatic-speech-recognition","onnx-community/whisper-tiny",{dtype:"q8",progress_callback:(p:any)=>{if(p?.status==="progress"&&typeof p.progress==="number")setTranscriptionStatus("Downloading speech model "+Math.round(p.progress)+"%…");}} as any);
+   const onProgress=(p:any)=>{if(p?.status==="progress"&&typeof p.progress==="number")setTranscriptionStatus("Downloading speech model "+Math.round(p.progress)+"%…");};let transcriber:any;try{transcriber=await pipeline("automatic-speech-recognition","onnx-community/whisper-tiny",{device:"webgpu",dtype:"fp16",progress_callback:onProgress} as any);}catch{setTranscriptionStatus("GPU unavailable · switching to CPU mode…");transcriber=await pipeline("automatic-speech-recognition","onnx-community/whisper-tiny",{device:"wasm",dtype:"q8",progress_callback:onProgress} as any);}
    setTranscriptionStatus("Transcribing locally on this device…");
    const output=await transcriber(audioUrl,{return_timestamps:"word",chunk_length_s:30,stride_length_s:5} as any) as {text?:string;chunks?:{text:string;timestamp:[number|null,number|null]}[]};
    const base=file.type.startsWith("video/")?trimStart:0;
