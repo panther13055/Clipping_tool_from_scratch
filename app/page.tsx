@@ -17,8 +17,63 @@ export default function Home() {
 
  useEffect(()=>{const v=videoRef.current;if(!v)return;if(playing){v.play().catch(()=>setPlaying(false));}else v.pause();},[playing,src]);
  const activateFile=(f:File)=>{setFile(f);setSrc(URL.createObjectURL(f));setPlaying(false);setTime(0);setDuration(0);setTrimStart(0);setTrimEnd(0);setSplitPoints([]);}; const loadFiles=(list:FileList|null)=>{if(!list?.length)return;const incoming=Array.from(list);setMediaFiles(prev=>{const next=[...prev];for(const item of incoming)if(!next.some(x=>x.name===item.name&&x.size===item.size&&x.lastModified===item.lastModified))next.push(item);return next;});activateFile(incoming[0]);};
- const seek=(v:number)=>{setTime(v);if(videoRef.current)videoRef.current.currentTime=v;}; const exportClip=async()=>{const v=videoRef.current;if(!v||!file||!file.type.startsWith("video/")){alert("Import a video before exporting.");return;}if(typeof MediaRecorder==="undefined"||typeof (v as HTMLVideoElement&{captureStream?:()=>MediaStream}).captureStream!=="function"){alert("This browser does not support local video recording. Try the latest Chrome or Edge.");return;}const end=trimEnd||duration;const start=Math.max(0,trimStart);if(end<=start){alert("Set a valid In and Out point first.");return;}const stream=(v as HTMLVideoElement&{captureStream:()=>MediaStream}).captureStream();const mime=["video/webm;codecs=vp9,opus","video/webm;codecs=vp8,opus","video/webm"].find(t=>MediaRecorder.isTypeSupported(t));if(!mime){alert("No supported WebM recording format was found in this browser.");return;}const recorder=new MediaRecorder(stream,{mimeType:mime});const chunks:BlobPart[]=[];setExporting(true);const finish=()=>{if(recorder.state!=="inactive")recorder.stop();};const onTick=()=>{if(v.currentTime>=end-.04){v.pause();finish();}};recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};recorder.onerror=()=>{setExporting(false);v.removeEventListener("timeupdate",onTick);alert("Export failed. Please try again with a shorter clip.");};recorder.onstop=()=>{v.removeEventListener("timeupdate",onTick);stream.getTracks().forEach(t=>t.stop());setPlaying(false);setExporting(false);const blob=new Blob(chunks,{type:mime});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=(file.name.replace(/\\.[^.]+$/,"")||"clip")+"-edited.webm";a.click();URL.revokeObjectURL(url);};try{v.currentTime=start;await new Promise<void>(resolve=>{if(Math.abs(v.currentTime-start)<.03)resolve();else v.addEventListener("seeked",()=>resolve(),{once:true});});v.addEventListener("timeupdate",onTick);recorder.start(250);await v.play();setPlaying(true);}catch{v.removeEventListener("timeupdate",onTick);if(recorder.state!=="inactive")recorder.stop();setExporting(false);alert("Could not start export. Check that the video can play in the preview.");}};
- const addSplit=()=>{if(!duration||time<=trimStart+.05||time>=trimEnd-.05)return;setSplitPoints(p=>[...p,time].sort((a,b)=>a-b));};
+ const seek=(v:number)=>{setTime(v);if(videoRef.current)videoRef.current.currentTime=v;};
+ const exportClip=async()=>{
+  const v=videoRef.current;
+  if(!v||!file||!file.type.startsWith("video/")){alert("Import a video before exporting.");return;}
+  const videoWithCapture=v as HTMLVideoElement&{captureStream?:()=>MediaStream};
+  if(typeof MediaRecorder==="undefined"||typeof videoWithCapture.captureStream!=="function"||typeof HTMLCanvasElement.prototype.captureStream!=="function"){alert("This browser does not support local video recording. Use the latest Chrome or Edge.");return;}
+  const end=trimEnd||duration;const start=Math.max(0,trimStart);
+  if(end<=start){alert("Set a valid In and Out point first.");return;}
+  const sourceStream=videoWithCapture.captureStream();
+  const canvas=document.createElement("canvas");
+  const dimensions=ratio==="9:16"?[1080,1920]:ratio==="16:9"?[1920,1080]:[1080,1080];
+  canvas.width=dimensions[0];canvas.height=dimensions[1];
+  const ctx=canvas.getContext("2d");
+  if(!ctx){sourceStream.getTracks().forEach(t=>t.stop());alert("Could not create the export canvas.");return;}
+  const outputStream=canvas.captureStream(30);
+  sourceStream.getAudioTracks().forEach(track=>outputStream.addTrack(track));
+  const mime=["video/webm;codecs=vp9,opus","video/webm;codecs=vp8,opus","video/webm"].find(t=>MediaRecorder.isTypeSupported(t));
+  if(!mime){sourceStream.getTracks().forEach(t=>t.stop());outputStream.getTracks().forEach(t=>t.stop());alert("No supported WebM recording format was found.");return;}
+  const recorder=new MediaRecorder(outputStream,{mimeType:mime,videoBitsPerSecond:Math.min(16000000,Math.max(5000000,canvas.width*canvas.height*5))});
+  const chunks:BlobPart[]=[];let raf=0;let stopped=false;
+  const draw=()=>{
+   if(stopped)return;
+   ctx.fillStyle="#000";ctx.fillRect(0,0,canvas.width,canvas.height);
+   if(v.readyState>=2){
+    const scale=Math.min(canvas.width/v.videoWidth,canvas.height/v.videoHeight);
+    const w=v.videoWidth*scale,h=v.videoHeight*scale;
+    ctx.save();ctx.filter=previewFilter||"none";ctx.drawImage(v,(canvas.width-w)/2,(canvas.height-h)/2,w,h);ctx.restore();
+   }
+   if(showCaption&&caption.trim()){
+    const words=caption.trim().split(/\\s+/);const fontSize=Math.round(canvas.width*.057);
+    ctx.save();ctx.font="900 "+fontSize+"px Arial, sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";
+    ctx.lineJoin="round";ctx.lineWidth=Math.max(3,fontSize*.11);ctx.strokeStyle="#08090ddd";ctx.fillStyle=captionStyle==="Karaoke"||captionStyle==="Yellow Highlight"?"#ffe45c":captionStyle==="Neon"||captionStyle==="Hologram"?"#a8f4ff":"#fff";
+    ctx.shadowColor=captionStyle==="Neon"||captionStyle==="Glow"?"#32bfff":"#000";ctx.shadowBlur=captionStyle==="Neon"||captionStyle==="Glow"?fontSize*.28:fontSize*.12;
+    const maxWidth=canvas.width*.88;const lines:string[]=[];let line="";
+    for(const word of words){const candidate=line?line+" "+word:word;if(ctx.measureText(candidate).width>maxWidth&&line){lines.push(line);line=word;}else line=candidate;}if(line)lines.push(line);
+    const lineHeight=fontSize*1.18;const y=canvas.height*.82-(lines.length-1)*lineHeight/2;
+    if(["Podcast","MrBeast","Yellow Highlight","White Subtitle","Boxed","Streamer","Caption Bar"].includes(captionStyle)){ctx.shadowBlur=0;ctx.fillStyle=captionStyle==="MrBeast"||captionStyle==="Red Alert"?"#d92736":captionStyle==="Yellow Highlight"?"#ffe45c":"#101722dd";const pad=fontSize*.22;const boxW=Math.min(maxWidth,Math.max(...lines.map(t=>ctx.measureText(t).width))+pad*2);ctx.fillRect((canvas.width-boxW)/2,y-lineHeight/2-pad,boxW,lines.length*lineHeight+pad*2);}
+    lines.forEach((text,i)=>{const yy=y+i*lineHeight;if(captionStyle!=="Yellow Highlight"&&captionStyle!=="Gradient"&&captionStyle!=="Rainbow")ctx.strokeText(text,canvas.width/2,yy);ctx.fillText(text,canvas.width/2,yy);});
+    ctx.restore();
+   }
+   raf=requestAnimationFrame(draw);
+  };
+  const cleanup=()=>{stopped=true;if(raf)cancelAnimationFrame(raf);sourceStream.getTracks().forEach(t=>t.stop());outputStream.getTracks().forEach(t=>t.stop());};
+  setExporting(true);
+  try{
+   v.pause();v.currentTime=start;
+   await new Promise<void>(resolve=>{if(Math.abs(v.currentTime-start)<.03&&v.readyState>=2)resolve();else v.addEventListener("seeked",()=>resolve(),{once:true});});
+   draw();
+   recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
+   recorder.onerror=()=>{cleanup();setExporting(false);setPlaying(false);alert("Export failed. Try a shorter clip or lower resolution.");};
+   recorder.onstop=()=>{cleanup();setPlaying(false);setExporting(false);if(!chunks.length){alert("No video data was recorded. Please try again.");return;}const blob=new Blob(chunks,{type:mime});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=(file.name.replace(/\\.[^.]+$/,"")||"clip")+"-clipforge.webm";a.click();setTimeout(()=>URL.revokeObjectURL(url),1500);};
+   recorder.start(250);await v.play();setPlaying(true);
+   const stopAtEnd=()=>{if(v.currentTime>=end-.04&&recorder.state!=="inactive"){v.pause();recorder.stop();}};
+   v.addEventListener("timeupdate",stopAtEnd);
+   recorder.addEventListener("stop",()=>v.removeEventListener("timeupdate",stopAtEnd),{once:true});
+  }catch{cleanup();if(recorder.state!=="inactive")recorder.stop();setExporting(false);setPlaying(false);alert("Could not start export. Check that the video can play in the preview.");}
+ }; const addSplit=()=>{if(!duration||time<=trimStart+.05||time>=trimEnd-.05)return;setSplitPoints(p=>[...p,time].sort((a,b)=>a-b));};
  const removeLastSplit=()=>setSplitPoints(p=>p.slice(0,-1));
  const setTrim=(edge:"start"|"end",value:number)=>{if(edge==="start"){const n=Math.max(0,Math.min(value,trimEnd||duration));setTrimStart(n);if(time<n)seek(n);}else{const n=Math.min(duration,Math.max(value,trimStart));setTrimEnd(n);if(time>n)seek(n);}};
 
