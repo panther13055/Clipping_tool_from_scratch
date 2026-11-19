@@ -15,7 +15,73 @@ type EditorSnapshot={caption:string;captionStyle:string;captionChunks:{text:stri
 
 export default function Home() {
  const [tab,setTab]=useState<Tab>("media"); const [inspectorTab,setInspectorTab]=useState<"Transform"|"Audio"|"Motion">("Transform"); const [showShortcuts,setShowShortcuts]=useState(false); const [mediaFilter,setMediaFilter]=useState<"Project"|"Audio">("Project"); const [sourceLink,setSourceLink]=useState(""); const [sourceLinkStatus,setSourceLinkStatus]=useState(""); const [clipCandidates,setClipCandidates]=useState<ClipCandidate[]>([]); const [selectedClipId,setSelectedClipId]=useState(""); const [clipFormat,setClipFormat]=useState<Ratio>("9:16"); const [analyzingClips,setAnalyzingClips]=useState(false); const [localJobId,setLocalJobId]=useState(""); const [localJobStatus,setLocalJobStatus]=useState(""); const [localJobLive,setLocalJobLive]=useState(false); const [autoRenderLive,setAutoRenderLive]=useState(true); const autoRenderBusyRef=useRef(false); const autoRenderedKeysRef=useRef(new Set<string>()); const [renderingClipId,setRenderingClipId]=useState(""); const [file,setFile]=useState<File|null>(null); const [mediaFiles,setMediaFiles]=useState<File[]>([]); const [assetUrls,setAssetUrls]=useState<Record<string,string>>({}); const [gameAsset,setGameAsset]=useState(""); const [facecamAsset,setFacecamAsset]=useState(""); const [audioAsset,setAudioAsset]=useState(""); const [musicVolume,setMusicVolume]=useState(65); const [src,setSrc]=useState(""); const [playing,setPlaying]=useState(false); const [time,setTime]=useState(0); const [duration,setDuration]=useState(0); const [ratio,setRatio]=useState<Ratio>("9:16"); const [caption,setCaption]=useState("THIS IS WHERE THE STORY BEGINS"); const [captionStyle,setCaptionStyle]=useState("Impact"); const [facecam,setFacecam]=useState({x:59,y:8,w:31,h:25}); const [game,setGame]=useState({x:5,y:8,w:90,h:84}); const [active,setActive]=useState<"facecam"|"game">("facecam"); const [zoom,setZoom]=useState(100); const [splitPoints,setSplitPoints]=useState<number[]>([]); const [removedRanges,setRemovedRanges]=useState<{start:number;end:number}[]>([]); const [selectedSplitIndex,setSelectedSplitIndex]=useState<number|null>(null); const [detectingScenes,setDetectingScenes]=useState(false); const [sceneStatus,setSceneStatus]=useState(""); const [faceTrackPoints,setFaceTrackPoints]=useState<FaceTrackPoint[]>([]); const [trackingFaces,setTrackingFaces]=useState(false); const [keyframes,setKeyframes]=useState<{game:Keyframe[];facecam:Keyframe[]}>({game:[],facecam:[]}); const [trimStart,setTrimStart]=useState(0); const [trimEnd,setTrimEnd]=useState(0); const [showCaption,setShowCaption]=useState(true); const [activeEffect,setActiveEffect]=useState("None"); const [brightness,setBrightness]=useState(100); const [contrast,setContrast]=useState(100); const [saturation,setSaturation]=useState(100); const [transitionPreset,setTransitionPreset]=useState<"None"|"Fade In"|"Fade Out"|"Fade In + Out">("None"); const [exporting,setExporting]=useState(false); const [exportResolution,setExportResolution]=useState<"1080p"|"4K">("1080p"); const [exportFormat,setExportFormat]=useState<"WebM"|"MP4">("MP4"); const [enhancePreset,setEnhancePreset]=useState<"None"|"Denoise"|"Sharpen"|"Denoise + sharpen"|"Stabilize"|"Denoise + stabilize"|"Motion blur"|"Denoise + motion blur"|"Deinterlace"|"Film grain">("None"); const [fitMode,setFitMode]=useState<"Fit"|"Fill">("Fill"); const [layerOpacity,setLayerOpacity]=useState(100); const [captionPosition,setCaptionPosition]=useState<"Top"|"Center"|"Bottom">("Bottom"); const [captionScale,setCaptionScale]=useState(100); const [transcribing,setTranscribing]=useState(false); const [transcriptionStatus,setTranscriptionStatus]=useState(""); const [captionChunks,setCaptionChunks]=useState<{text:string;start:number;end:number}[]>([]); const ffmpegRef=useRef<any>(null); const ffmpegLoadedRef=useRef(false); const musicAudioRef=useRef<HTMLAudioElement>(null); const audioContextRef=useRef<AudioContext|null>(null); const mainAudioSourceRef=useRef<MediaElementAudioSourceNode|null>(null); const musicAudioSourceRef=useRef<MediaElementAudioSourceNode|null>(null); const musicPreviewGainRef=useRef<GainNode|null>(null); const musicGainRef=useRef<GainNode|null>(null); const audioMixDestinationRef=useRef<MediaStreamAudioDestinationNode|null>(null); const videoRef=useRef<HTMLVideoElement>(null); const gameVideoRef=useRef<HTMLVideoElement>(null); const facecamVideoRef=useRef<HTMLVideoElement>(null); const inputRef=useRef<HTMLInputElement>(null); const canvasRef=useRef<HTMLDivElement>(null); const dragRef=useRef<{kind:"facecam"|"game";mode:"move"|"resize";startX:number;startY:number;originX:number;originY:number;originW:number;originH:number}|null>(null); const historyRef=useRef<EditorSnapshot[]>([]); const redoRef=useRef<EditorSnapshot[]>([]); const lastSnapshotRef=useRef<EditorSnapshot|null>(null); const makeSnapshot=():EditorSnapshot=>({caption,captionStyle,captionChunks,ratio,faceTrackPoints,facecam,game,activeEffect,brightness,contrast,saturation,transitionPreset,trimStart,trimEnd,showCaption,splitPoints,removedRanges,selectedSplitIndex,keyframes,gameAsset,facecamAsset,audioAsset,musicVolume,exportResolution,exportFormat,enhancePreset,fitMode,layerOpacity,captionPosition,captionScale}); const applySnapshot=(s:EditorSnapshot)=>{lastSnapshotRef.current=s;setCaption(s.caption);setCaptionStyle(s.captionStyle);setCaptionChunks(s.captionChunks||[]);setRatio(s.ratio);setFaceTrackPoints(s.faceTrackPoints||[]);setFacecam(s.facecam);setGame(s.game);setActiveEffect(s.activeEffect);setBrightness(s.brightness);setContrast(s.contrast);setSaturation(s.saturation);setTransitionPreset(s.transitionPreset);setTrimStart(s.trimStart);setTrimEnd(s.trimEnd);setShowCaption(s.showCaption);setSplitPoints(s.splitPoints);setRemovedRanges(s.removedRanges);setSelectedSplitIndex(s.selectedSplitIndex);setKeyframes(s.keyframes);setGameAsset(s.gameAsset);setFacecamAsset(s.facecamAsset);setAudioAsset(s.audioAsset);setMusicVolume(s.musicVolume);setExportResolution(s.exportResolution);setExportFormat(s.exportFormat);setEnhancePreset(s.enhancePreset);setFitMode(s.fitMode);setLayerOpacity(s.layerOpacity??100);setCaptionPosition(s.captionPosition||"Bottom");setCaptionScale(s.captionScale??100);};
- useEffect(()=>{if(!localJobId)return;let active=true;const poll=async()=>{try{const response=await fetch("http://127.0.0.1:8765/jobs/"+localJobId);if(!response.ok)throw new Error("Local job could not be read.");const job=await response.json();if(!active)return;const found=(job.clips||[]).map((clip:any,index:number)=>({...clip,id:String(index+1)}));setLocalJobLive(!!job.live_active);if(job.live_active){setClipCandidates(found);setSelectedClipId(current=>current||found[0]?.id||"");setLocalJobStatus("LIVE · "+(job.live_segments_processed||0)+" chunks analysed · "+found.length+" highlights");setSourceLinkStatus("Livestream is being captured locally. New ranked moments appear as each 60-second chunk is analysed.");setAnalyzingClips(true);if(autoRenderLive&&!autoRenderBusyRef.current){const next=found.find((clip:any)=>clip.score>=75&&clip.key&&!autoRenderedKeysRef.current.has(clip.key));if(next){autoRenderBusyRef.current=true;autoRenderedKeysRef.current.add(next.key);(async()=>{try{const renderResponse=await fetch("http://127.0.0.1:8765/jobs/"+localJobId+"/render-key",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({clip_key:next.key,aspect_ratio:clipFormat})});const renderedInfo=await renderResponse.json();if(!renderResponse.ok)throw new Error(renderedInfo.detail||"Automatic clip render failed.");const clipResponse=await fetch("http://127.0.0.1:8765"+renderedInfo.download);if(!clipResponse.ok)throw new Error("Automatic clip download failed.");const blob=await clipResponse.blob();const name=renderedInfo.filename||("clipforge-live-"+Date.now()+".mp4");const outputFile=new File([blob],name,{type:"video/mp4"});setMediaFiles(prev=>prev.some(item=>item.name===name&&item.size===outputFile.size)?prev:[...prev,outputFile]);const objectUrl=URL.createObjectURL(blob);const link=document.createElement("a");link.href=objectUrl;link.download=name;document.body.appendChild(link);link.click();link.remove();window.setTimeout(()=>URL.revokeObjectURL(objectUrl),60000);setSourceLinkStatus("AI automatically edited and downloaded a "+clipFormat+" highlight: "+next.title);}catch(error){setSourceLinkStatus(error instanceof Error?error.message:"Automatic live clip render failed.");}finally{autoRenderBusyRef.current=false;}})();}}}else if(job.status==="ready"){setClipCandidates(found);setSelectedClipId(current=>current||found[0]?.id||"");setSourceLinkStatus(job.message||("Local AI analysis complete · "+found.length+" ranked clips."));setAnalyzingClips(false);setLocalJobStatus("Ready · "+found.length+" clips found");}else if(job.status==="error"){setSourceLinkStatus(job.message||"Local analysis failed.");setAnalyzingClips(false);setLocalJobStatus("Analysis failed");setLocalJobLive(false);}else{setLocalJobStatus(job.stage+" · "+Math.round(job.progress||0)+"%");}}catch(error){if(active){setLocalJobStatus(error instanceof Error?error.message:"Local worker connection lost.");setAnalyzingClips(false);setLocalJobLive(false);}}};poll();const timer=window.setInterval(poll,2500);return()=>{active=false;window.clearInterval(timer);};},[localJobId,autoRenderLive,clipFormat]);
+ useEffect(()=>{
+  if(!localJobId)return;
+  let active=true;
+  const maybeAutoRender=(clips:any[])=>{
+    if(!autoRenderLive||autoRenderBusyRef.current)return;
+    const candidate=clips.find((clip:any)=>clip.score>=75&&clip.key&&!autoRenderedKeysRef.current.has(clip.key));
+    if(!candidate)return;
+    autoRenderBusyRef.current=true;
+    autoRenderedKeysRef.current.add(candidate.key);
+    void (async()=>{
+      try{
+        const response=await fetch("http://127.0.0.1:8765/jobs/"+localJobId+"/render-key",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({clip_key:candidate.key,aspect_ratio:clipFormat})});
+        const info=await response.json();
+        if(!response.ok)throw new Error(info.detail||"Automatic clip render failed.");
+        const download=await fetch("http://127.0.0.1:8765"+info.download);
+        if(!download.ok)throw new Error("Automatic clip download failed.");
+        const blob=await download.blob();
+        const name=info.filename||("clipforge-live-"+Date.now()+".mp4");
+        const outputFile=new File([blob],name,{type:"video/mp4"});
+        setMediaFiles(prev=>prev.some(item=>item.name===name&&item.size===outputFile.size)?prev:[...prev,outputFile]);
+        const objectUrl=URL.createObjectURL(blob);
+        const link=document.createElement("a");link.href=objectUrl;link.download=name;document.body.appendChild(link);link.click();link.remove();
+        window.setTimeout(()=>URL.revokeObjectURL(objectUrl),60000);
+        setSourceLinkStatus("AI automatically edited and downloaded a "+clipFormat+" highlight: "+candidate.title);
+      }catch(error){
+        autoRenderedKeysRef.current.delete(candidate.key);
+        setSourceLinkStatus(error instanceof Error?error.message:"Automatic live clip render failed.");
+      }finally{autoRenderBusyRef.current=false;}
+    })();
+  };
+  const poll=async()=>{
+    try{
+      const response=await fetch("http://127.0.0.1:8765/jobs/"+localJobId);
+      if(!response.ok)throw new Error("Local job could not be read.");
+      const job=await response.json();
+      if(!active)return;
+      const found=(job.clips||[]).map((clip:any,index:number)=>({...clip,id:String(index+1)}));
+      setLocalJobLive(!!job.live_active);
+      if(job.live_active){
+        setClipCandidates(found);
+        setSelectedClipId(current=>current||found[0]?.id||"");
+        setLocalJobStatus("LIVE · "+(job.live_segments_processed||0)+" chunks analysed · "+found.length+" highlights");
+        setSourceLinkStatus("Livestream is being captured locally. New ranked moments appear as each 60-second chunk is analysed.");
+        setAnalyzingClips(true);
+      }else if(job.status==="ready"){
+        setClipCandidates(found);
+        setSelectedClipId(current=>current||found[0]?.id||"");
+        setSourceLinkStatus(job.message||("Local AI analysis complete · "+found.length+" ranked clips."));
+        setAnalyzingClips(false);
+        setLocalJobStatus("Ready · "+found.length+" clips found");
+      }else if(job.status==="error"){
+        setSourceLinkStatus(job.message||"Local analysis failed.");
+        setAnalyzingClips(false);
+        setLocalJobStatus("Analysis failed");
+        setLocalJobLive(false);
+      }else{
+        setLocalJobStatus(job.stage+" · "+Math.round(job.progress||0)+"%");
+      }
+      if(job.live_active||job.status==="ready")maybeAutoRender(found);
+    }catch(error){
+      if(active){setLocalJobStatus(error instanceof Error?error.message:"Local worker connection lost.");setAnalyzingClips(false);setLocalJobLive(false);}
+    }
+  };
+  poll();
+  const timer=window.setInterval(poll,2500);
+  return()=>{active=false;window.clearInterval(timer);};
+},[localJobId,autoRenderLive,clipFormat]);
  useEffect(()=>{ if(!src)return; return ()=>URL.revokeObjectURL(src); },[src]);
  useEffect(()=>{const urls:Record<string,string>={};mediaFiles.filter(item=>item.type.startsWith("video/")||item.type.startsWith("audio/")).forEach(item=>{urls[mediaKey(item)]=URL.createObjectURL(item);});setAssetUrls(urls);return()=>Object.values(urls).forEach(url=>URL.revokeObjectURL(url));},[mediaFiles]);
  useEffect(()=>{[gameVideoRef.current,facecamVideoRef.current].forEach(element=>{if(!element)return;if(Number.isFinite(element.duration)&&element.duration>0){const target=time%element.duration;if(Math.abs(element.currentTime-target)>.35)element.currentTime=target;}if(playing)element.play().catch(()=>{});else element.pause();});},[time,playing,gameAsset,facecamAsset]);
