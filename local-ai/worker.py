@@ -436,7 +436,7 @@ def analyse_job(job_id: str, url: str) -> None:
 
 @app.get("/health")
 def health() -> dict[str, Any]:
-    return {"ok": True, "engine": "ClipForge Local AI Engine", "ffmpeg": Path(FFMPEG).exists(), "model": "Whisper base (downloads on first analysis)", "active_jobs": sum(1 for j in JOBS.values() if j.get("status") == "processing")}
+    return {"ok": True, "engine": "ClipForge Local AI Engine", "ffmpeg": Path(FFMPEG).exists(), "model": "Whisper base (downloads on first analysis)", "streamlink": bool(shutil.which("streamlink")), "active_jobs": sum(1 for j in JOBS.values() if j.get("status") == "processing")}
 
 @app.post("/ingest")
 def ingest(request: IngestRequest) -> dict[str, str]:
@@ -541,7 +541,7 @@ def render_clip(job_id: str, request: RenderRequest) -> dict[str, Any]:
     else:
         framing = f"scale={width}:{height}:force_original_aspect_ratio=increase:flags=lanczos,crop={width}:{height}"
         smart_reframe = "Centre crop (no clear face detected)"
-    srt = folder / f"clip_{request.clip_index+1}.srt"
+    srt = folder / f"clip_{clip_index+1}.srt"
     rows = []
     clip_words = [w for w in clip.get("words", job.get("words", [])) if w["start"] >= clip["start"] and w["end"] <= clip["end"]]
     for index in range(0, len(clip_words), 6):
