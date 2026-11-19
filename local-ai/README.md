@@ -2,6 +2,8 @@
 
 This optional free local companion powers full VOD link ingestion, local transcription, ranked highlights and MP4 rendering. It runs on your Windows computer; no paid API key or cloud GPU is used.
 
+For the easiest setup, extract the repository ZIP and double-click `START_CLIPFORGE_WINDOWS.bat` in the repository root. It starts both the web editor and the local AI worker. If Chrome asks for local-network access, allow ClipForge to connect to `127.0.0.1`.
+
 ## Start on Windows
 
 1. Install Python 3.10–3.12 (64-bit).
