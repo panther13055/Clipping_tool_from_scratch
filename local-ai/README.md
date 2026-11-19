@@ -19,7 +19,8 @@ The local API listens only on `127.0.0.1:8765`. Open `http://127.0.0.1:8765/docs
 - Downloads public archived VODs using yt-dlp (up to 6 hours, capped at 1080p).
 - Rejects live/upcoming streams; analyse the replay after it is available.
 - Transcribes speech locally with faster-whisper base and word timestamps.
-- Scores moments using transcript hooks, speaking pace, lexical variety and audio energy, with visible reasons.
+- Scores moments using transcript hooks, speaking pace, lexical variety and audio energy, with visible reasons. The score is an explainable ranking signal, not a trained virality predictor.
+- Detects faces locally with OpenCV and centres vertical/square crops around the dominant face when one is visible; falls back to a centred crop when it cannot find a face.
 - Renders separate H.264/AAC MP4 clips in vertical, square or landscape layouts, with audio normalisation and fades. Captions are burned in when the bundled FFmpeg build supports its subtitles filter; otherwise the video still renders and the app reports that captions were not burned in.
 
 ## Important
