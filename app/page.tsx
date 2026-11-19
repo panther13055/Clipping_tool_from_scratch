@@ -107,7 +107,7 @@ export default function Home() {
     setTranscriptionStatus("Extracting audio from video…");
     const recorded=new Promise<Blob>((resolve,reject)=>{recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};recorder.onerror=()=>reject(new Error("Audio extraction failed."));recorder.onstop=()=>resolve(new Blob(chunks,{type:recorder.mimeType||"audio/webm"}));});
     const stop=()=>{if(recorder.state!=="inactive")recorder.stop();v.pause();};
-    const onTick=()=>{if(v.currentTime>=end-.04)stop();};v.addEventListener("timeupdate",onTick);recorder.addEventListener("stop",()=>v.removeEventListener("timeupdate",onTick),{once:true});
+    const onTick=()=>{if(v.currentTime>=end-.04)stop();};v.addEventListener("timeupdate",onTick);v.addEventListener("ended",stop,{once:true});recorder.addEventListener("stop",()=>{v.removeEventListener("timeupdate",onTick);v.removeEventListener("ended",stop);},{once:true});
     recorder.start(500);await v.play();setPlaying(true);const blob=await recorded;setPlaying(false);videoCapture.getTracks().forEach(t=>t.stop());videoCapture=null;recordedUrl=URL.createObjectURL(blob);audioUrl=recordedUrl;
    }else{audioUrl=URL.createObjectURL(file);}
    setTranscriptionStatus("Loading Whisper model (first run downloads it once)…");
