@@ -321,7 +321,7 @@ def run_live_capture(job_id: str, url: str) -> None:
                message="Connecting to the active broadcast and opening a rolling local recording…",
                progress=0, title="Live broadcast")
         stream_proc = subprocess.Popen(
-            [streamlink, "--stdout", "--retry-streams", "5", url, "best"],
+            [streamlink, "--stdout", "--retry-streams", "5", "--retry-max", "3", "--retry-open", "3", "--stream-segment-attempts", "5", url, "best"],
             stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, bufsize=0
         )
         if stream_proc.stdout is None:
