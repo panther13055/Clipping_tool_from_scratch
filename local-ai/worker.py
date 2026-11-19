@@ -552,6 +552,8 @@ def download_rendered_file(job_id: str, filename: str) -> FileResponse:
     safe_name = Path(filename).name
     if safe_name != filename or not safe_name.endswith(".mp4"):
         raise HTTPException(status_code=400, detail="Invalid rendered filename.")
+    if job_id not in JOBS:
+        raise HTTPException(status_code=404, detail="Job not found.")
     target = ROOT / job_id / safe_name
     if not target.exists():
         raise HTTPException(status_code=404, detail="Rendered clip file not found.")
