@@ -485,7 +485,7 @@ def render_clip(job_id: str, request: RenderRequest) -> dict[str, Any]:
     clip = clips[request.clip_index]
     source = Path(clip.get("source_path") or job["source"])
     folder = source.parent
-    output = folder / f"clip_{request.clip_index+1}_{request.aspect_ratio.replace(':','x')}.mp4"
+    output = folder / f"clip_{request.clip_index+1}_{int(clip['start']*1000)}_{request.aspect_ratio.replace(':','x')}.mp4"
     duration = max(.5, clip["end"] - clip["start"])
     if request.aspect_ratio == "9:16":
         width, height = 1080, 1920
@@ -530,7 +530,17 @@ def render_clip(job_id: str, request: RenderRequest) -> dict[str, Any]:
         result = run_ffmpeg(args)
     if result.returncode != 0 or not output.exists():
         raise HTTPException(status_code=500, detail="Render failed: " + result.stderr[-1000:])
-    return {"ok": True, "filename": output.name, "smart_reframe": smart_reframe, "captions_burned_in": "subtitles=" in vf, "download": f"/jobs/{job_id}/clips/{request.clip_index}/download"}
+    return {"ok": True, "filename": output.name, "smart_reframe": smart_reframe, "captions_burned_in": "subtitles=" in vf, "download": f"/jobs/{job_id}/files/{output.name}"}
+
+@app.get("/jobs/{job_id}/files/{filename}")
+def download_rendered_file(job_id: str, filename: str) -> FileResponse:
+    safe_name = Path(filename).name
+    if safe_name != filename or not safe_name.endswith(".mp4"):
+        raise HTTPException(status_code=400, detail="Invalid rendered filename.")
+    target = ROOT / job_id / safe_name
+    if not target.exists():
+        raise HTTPException(status_code=404, detail="Rendered clip file not found.")
+    return FileResponse(target, media_type="video/mp4", filename=safe_name)
 
 @app.get("/jobs/{job_id}/clips/{clip_index}/download")
 def download_clip(job_id: str, clip_index: int) -> FileResponse:
