@@ -44,6 +44,7 @@ class IngestRequest(BaseModel):
 class RenderRequest(BaseModel):
     clip_index: int
     aspect_ratio: str = "9:16"
+    clip_key: str | None = None
 
 def update(job_id: str, **values: Any) -> None:
     with LOCK:
@@ -482,10 +483,7 @@ def render_clip_by_key(job_id: str, request: RenderByKeyRequest) -> dict[str, An
     job = JOBS.get(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found.")
-    index = next((i for i, clip in enumerate(job.get("clips", [])) if clip.get("key") == request.clip_key), None)
-    if index is None:
-        raise HTTPException(status_code=404, detail="This live highlight is no longer in the current ranked list.")
-    return render_clip(job_id, RenderRequest(clip_index=index, aspect_ratio=request.aspect_ratio))
+    return render_clip(job_id, RenderRequest(clip_index=0, aspect_ratio=request.aspect_ratio, clip_key=request.clip_key))
 
 @app.post("/jobs/{job_id}/render")
 def render_clip(job_id: str, request: RenderRequest) -> dict[str, Any]:
@@ -493,14 +491,20 @@ def render_clip(job_id: str, request: RenderRequest) -> dict[str, Any]:
     if not job or (job.get("status") != "ready" and not (job.get("live_active") and job.get("clips"))):
         raise HTTPException(status_code=409, detail="Wait for the first live highlight or finish the analysis first.")
     clips = job.get("clips", [])
-    if request.clip_index < 0 or request.clip_index >= len(clips):
+    if request.clip_key:
+        clip_index = next((i for i, item in enumerate(clips) if item.get("key") == request.clip_key), None)
+        if clip_index is None:
+            raise HTTPException(status_code=404, detail="This live highlight is no longer available.")
+    else:
+        clip_index = request.clip_index
+    if clip_index < 0 or clip_index >= len(clips):
         raise HTTPException(status_code=404, detail="Clip index not found.")
     if request.aspect_ratio not in ("9:16", "1:1", "16:9"):
         raise HTTPException(status_code=400, detail="Unsupported aspect ratio.")
-    clip = clips[request.clip_index]
+    clip = clips[clip_index]
     source = Path(clip.get("source_path") or job["source"])
     folder = source.parent
-    output = folder / f"clip_{request.clip_index+1}_{int(clip['start']*1000)}_{request.aspect_ratio.replace(':','x')}.mp4"
+    output = folder / f"clip_{clip_index+1}_{int(clip['start']*1000)}_{request.aspect_ratio.replace(':','x')}.mp4"
     duration = max(.5, clip["end"] - clip["start"])
     if request.aspect_ratio == "9:16":
         width, height = 1080, 1920
