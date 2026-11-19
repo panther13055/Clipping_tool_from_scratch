@@ -208,9 +208,15 @@ def score_highlights(words: list[dict[str, Any]], duration: float, energy: dict[
             if punctuation: reasons.append(f"{punctuation} expressive beats")
             if not reasons: reasons.append("clear continuous speech")
             title = re.split(r"[.!?]", text)[0][:72] or "Highlight moment"
+            clip_start = max(0.0, selected[0]["start"] - 2.0)
+            clip_end = min(duration, selected[-1]["end"] + 2.0)
+            if clip_end - clip_start < 15.0:
+                midpoint = (clip_start + clip_end) / 2
+                clip_start = max(0.0, midpoint - 7.5)
+                clip_end = min(duration, midpoint + 7.5)
             candidates.append({
-                "start": round(max(0, selected[0]["start"]), 2),
-                "end": round(min(duration, selected[-1]["end"]), 2),
+                "start": round(clip_start, 2),
+                "end": round(clip_end, 2),
                 "score": score,
                 "title": title,
                 "reason": reasons,
