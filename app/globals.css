@@ -95,3 +95,5 @@
 .ai-render-button{width:100%;margin-top:8px;border:1px solid #365a7c;border-radius:6px;padding:8px;background:#192a3c;color:#cce5ff;font-size:10px;cursor:pointer}.ai-render-button:disabled{opacity:.45;cursor:not-allowed}
 
 .ai-live-stop{width:100%;margin-top:7px;border:1px solid #814343;border-radius:7px;padding:9px 10px;background:#321d20;color:#ffb6b6;font-size:11px;font-weight:700;cursor:pointer}.ai-live-stop:hover{background:#472326}
+
+.ai-auto-render{display:flex;align-items:center;gap:8px;margin:8px 0;padding:9px 10px;border:1px solid #31543e;border-radius:7px;background:#14241b;color:#b8e5c4;font-size:11px}.ai-auto-render input{accent-color:#55c77c}
