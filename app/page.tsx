@@ -64,13 +64,13 @@ export default function Home() {
    drawOverlay(gameVideoRef.current,game);drawOverlay(facecamVideoRef.current,facecam);
    const timedCaption=captionChunks.length?(captionChunks.find(part=>v.currentTime>=part.start&&v.currentTime<=part.end)?.text||""):caption;if(showCaption&&timedCaption.trim()){
     const words=timedCaption.trim().split(/\\s+/);const fontSize=Math.round(canvas.width*.057);
-    ctx.save();ctx.font="900 "+fontSize+"px Arial, sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";
-    ctx.lineJoin="round";ctx.lineWidth=Math.max(3,fontSize*.11);ctx.strokeStyle="#08090ddd";ctx.fillStyle=captionStyle==="Karaoke"||captionStyle==="Yellow Highlight"?"#ffe45c":captionStyle==="Neon"||captionStyle==="Hologram"?"#a8f4ff":"#fff";
-    ctx.shadowColor=captionStyle==="Neon"||captionStyle==="Glow"?"#32bfff":"#000";ctx.shadowBlur=captionStyle==="Neon"||captionStyle==="Glow"?fontSize*.28:fontSize*.12;
+    ctx.save();ctx.font=captionStyle==="Minimal Mono"||captionStyle==="Terminal"?"600 "+fontSize+"px monospace":"900 "+fontSize+"px Arial, sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";
+    ctx.lineJoin="round";ctx.lineWidth=Math.max(3,fontSize*.11);ctx.strokeStyle="#08090ddd";ctx.fillStyle=captionStyle==="Karaoke"||captionStyle==="Yellow Highlight"?"#ffe45c":captionStyle==="Neon"||captionStyle==="Hologram"?"#a8f4ff":captionStyle==="Retro Wave"?"#ffd6fa":"#fff";
+    ctx.shadowColor=captionStyle==="Neon"||captionStyle==="Glow"?"#32bfff":captionStyle==="Glitch Pop"?"#ff315d":"#000";ctx.shadowBlur=captionStyle==="Neon"||captionStyle==="Glow"?fontSize*.28:fontSize*.12;
     const maxWidth=canvas.width*.88;const lines:string[]=[];let line="";
     for(const word of words){const candidate=line?line+" "+word:word;if(ctx.measureText(candidate).width>maxWidth&&line){lines.push(line);line=word;}else line=candidate;}if(line)lines.push(line);
     const lineHeight=fontSize*1.18;const y=canvas.height*.82-(lines.length-1)*lineHeight/2;
-    if(["Podcast","MrBeast","Yellow Highlight","White Subtitle","Boxed","Streamer","Caption Bar"].includes(captionStyle)){ctx.shadowBlur=0;ctx.fillStyle=captionStyle==="MrBeast"||captionStyle==="Red Alert"?"#d92736":captionStyle==="Yellow Highlight"?"#ffe45c":"#101722dd";const pad=fontSize*.22;const boxW=Math.min(maxWidth,Math.max(...lines.map(t=>ctx.measureText(t).width))+pad*2);ctx.fillRect((canvas.width-boxW)/2,y-lineHeight/2-pad,boxW,lines.length*lineHeight+pad*2);}
+    if(["Podcast","MrBeast","Yellow Highlight","White Subtitle","Boxed","Streamer","Caption Bar","News Flash","Subtitle Pro"].includes(captionStyle)){ctx.shadowBlur=0;ctx.fillStyle=captionStyle==="MrBeast"||captionStyle==="Red Alert"||captionStyle==="News Flash"?"#d92736":captionStyle==="Yellow Highlight"?"#ffe45c":"#101722dd";const pad=fontSize*.22;const boxW=Math.min(maxWidth,Math.max(...lines.map(t=>ctx.measureText(t).width))+pad*2);ctx.fillRect((canvas.width-boxW)/2,y-lineHeight/2-pad,boxW,lines.length*lineHeight+pad*2);}
     lines.forEach((text,i)=>{const yy=y+i*lineHeight;if(captionStyle!=="Yellow Highlight"&&captionStyle!=="Gradient"&&captionStyle!=="Rainbow")ctx.strokeText(text,canvas.width/2,yy);ctx.fillText(text,canvas.width/2,yy);});
     ctx.restore();
    }
