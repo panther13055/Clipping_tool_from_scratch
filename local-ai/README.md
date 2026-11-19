@@ -6,7 +6,7 @@ For the easiest setup, extract the repository ZIP and double-click `START_CLIPFO
 
 ## Start on Windows
 
-1. Install Python 3.10–3.12 (64-bit).
+1. Install Python 3.11 (64-bit).
 2. Open the repository folder and run `local-ai/START_WINDOWS.bat`.
 3. The first launch installs dependencies and downloads the Whisper base model when analysis first runs. Keep the terminal open.
 4. In ClipForge Studio, open **AI Clips**, paste a public YouTube/Twitch/Vimeo VOD link and choose **Import video link**.
