@@ -80,3 +80,6 @@
 .style-subtitle-pro{color:#fff;background:rgba(7,12,20,.82);padding:7px 13px;border-radius:5px;font-weight:650;letter-spacing:.01em}
 .style-glitch-pop{color:#fff;text-shadow:-2px 0 #ff315d,2px 0 #2eeaff,0 3px 12px #000;font-weight:950}
 .style-minimal-mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#f2f5f7;font-weight:600;letter-spacing:.045em;text-shadow:0 2px 7px #000}
+
+.keyframe-marker{position:absolute;top:7px;width:8px;height:8px;transform:translateX(-50%) rotate(45deg);border:1px solid #0c1119;border-radius:1px;z-index:4;pointer-events:none}
+.game-keyframe{background:#56b4ff}.facecam-keyframe{top:19px;background:#f6b95d}
