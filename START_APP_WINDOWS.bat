@@ -9,7 +9,10 @@ if errorlevel 1 (
 if not exist node_modules (
   echo Installing ClipForge dependencies...
   call npm install
-  if errorlevel 1 pause & exit /b 1
+  if errorlevel 1 (
+    pause
+    exit /b 1
+  )
 )
 echo Starting ClipForge Studio at http://localhost:3000
 npm run dev
