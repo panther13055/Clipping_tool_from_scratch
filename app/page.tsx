@@ -124,7 +124,7 @@ export default function Home() {
   finally{if(videoCapture)videoCapture.getTracks().forEach(t=>t.stop());if(audioUrl)URL.revokeObjectURL(audioUrl);if(recordedUrl&&recordedUrl!==audioUrl)URL.revokeObjectURL(recordedUrl);setTranscribing(false);}
  };
  const downloadSrt=()=>{if(!captionChunks.length){alert("Generate timed captions first.");return;}const stamp=(value:number)=>{const ms=Math.max(0,Math.round(value*1000));const h=Math.floor(ms/3600000);const m=Math.floor(ms%3600000/60000);const s=Math.floor(ms%60000/1000);const milli=ms%1000;return String(h).padStart(2,"0")+":"+String(m).padStart(2,"0")+":"+String(s).padStart(2,"0")+","+String(milli).padStart(3,"0");};const content=captionChunks.map((part,i)=>(i+1)+"\n"+stamp(part.start)+" --> "+stamp(part.end)+"\n"+part.text).join("\n\n");const url=URL.createObjectURL(new Blob([content],{type:"text/plain;charset=utf-8"}));const a=document.createElement("a");a.href=url;a.download=(file?.name.replace(/\\.[^.]+$/,"")||"clip")+"-captions.srt";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
- const addSplit=()=>{if(!duration||time<=trimStart+.05||time>=trimEnd-.05)return;setSplitPoints(p=>[...p,time].sort((a,b)=>a-b));};
+ const addSplit=()=>{const end=trimEnd||duration;if(!duration||time<=trimStart+.05||time>=end-.05)return;setSplitPoints(p=>p.some(point=>Math.abs(point-time)<.08)?p:[...p,time].sort((a,b)=>a-b));};
  const removeLastSplit=()=>setSplitPoints(p=>p.slice(0,-1));
  const setTrim=(edge:"start"|"end",value:number)=>{if(edge==="start"){const n=Math.max(0,Math.min(value,trimEnd||duration));setTrimStart(n);if(time<n)seek(n);}else{const n=Math.min(duration,Math.max(value,trimStart));setTrimEnd(n);if(time>n)seek(n);}};
 
