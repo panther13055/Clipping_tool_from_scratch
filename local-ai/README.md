@@ -17,7 +17,7 @@ The local API listens only on `127.0.0.1:8765`. Open `http://127.0.0.1:8765/docs
 ## What it does
 
 - Downloads public archived VODs using yt-dlp (up to 6 hours, capped at 1080p).
-- Rejects live/upcoming streams; analyse the replay after it is available.
+- Captures active public YouTube and Twitch livestreams with Streamlink, writing rolling 60-second MPEG-TS chunks without re-encoding the source.\n- Transcribes and scores each completed live chunk while capture continues. The strongest 24 moments are kept; high-scoring highlights can be auto-rendered before the broadcast ends.\n- Stop capture from the app to close the stream cleanly and analyse the final partial chunk. Scheduled/upcoming streams are not auto-started.
 - Transcribes speech locally with faster-whisper base and word timestamps.
 - Scores moments using transcript hooks, speaking pace, lexical variety and audio energy, with visible reasons. The score is an explainable ranking signal, not a trained virality predictor.
 - Detects faces locally with OpenCV and centres vertical/square crops around the dominant face when one is visible; falls back to a centred crop when it cannot find a face.
@@ -25,6 +25,6 @@ The local API listens only on `127.0.0.1:8765`. Open `http://127.0.0.1:8765/docs
 
 ## Important
 
-Only process videos you own or have permission to download and edit. The worker does not log in, bypass private-video restrictions, defeat DRM, or access protected streams. YouTube live streams are not analysed in real time; use the archived VOD. Some platforms may block downloads or require an account, in which case export your own VOD through the platform and import the MP4.
+Only process videos you own or have permission to download and edit. The worker does not log in, bypass private-video restrictions, defeat DRM, or access protected streams. Active capture currently supports public YouTube and Twitch streams through Streamlink. Availability can vary by region, account restrictions, stream format and platform changes. Some platforms may block downloads or require an account, in which case export your own VOD through the platform and import the MP4.
 
 Analysis is local and CPU-based. The first model download and long VOD processing can take time. The current worker is a local companion, not a serverless Vercel backend.
