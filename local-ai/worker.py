@@ -103,7 +103,7 @@ def download_video(job_id: str, url: str) -> Path:
     duration = info.get("duration") or 0
     if not duration:
         probe = run_ffmpeg(["-i", str(source), "-f", "null", "-"])
-        match = re.search(r"Duration: (\\d+):(\\d+):(\\d+(?:\\.\\d+)?)", probe.stderr)
+        match = re.search(r"Duration: (\d+):(\d+):(\d+(?:\.\d+)?)", probe.stderr)
         if match:
             duration = int(match.group(1))*3600 + int(match.group(2))*60 + float(match.group(3))
     update(job_id, source=str(source), title=info.get("title") or source.stem, duration=duration)
