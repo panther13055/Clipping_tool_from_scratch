@@ -9,6 +9,7 @@ import time
 import uuid
 import wave
 import numpy as np
+import cv2
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -142,6 +143,40 @@ def audio_energy(audio: Path) -> dict[int, float]:
 
 HYPE = re.compile(r"\b(wow|no way|oh my god|let'?s go|insane|crazy|amazing|unbelievable|bro|wait|finally|winner|win|won|clutch|goal|fail|omg|seriously|really|why|how|secret|best|worst|never|first|last|actually|incredible|what happened|you won)\b", re.I)
 
+def find_face_center(source: Path, start: float, end: float) -> tuple[float, float, int, int] | None:
+    """Find a stable dominant face centre for a portrait/square crop."""
+    capture = cv2.VideoCapture(str(source))
+    if not capture.isOpened():
+        return None
+    width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    if width <= 0 or height <= 0:
+        capture.release()
+        return None
+    cascade_path = Path(cv2.data.haarcascades) / "haarcascade_frontalface_default.xml"
+    detector = cv2.CascadeClassifier(str(cascade_path))
+    centres: list[tuple[float, float, float]] = []
+    try:
+        for second in range(int(start), int(end), 2):
+            capture.set(cv2.CAP_PROP_POS_MSEC, second * 1000)
+            ok, frame = capture.read()
+            if not ok:
+                continue
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            faces = detector.detectMultiScale(gray, scaleFactor=1.12, minNeighbors=5, minSize=(36, 36))
+            if len(faces):
+                x, y, w, h = max(faces, key=lambda box: box[2] * box[3])
+                centres.append(((x + w / 2) / width, (y + h / 2) / height, float(w*h)))
+    finally:
+        capture.release()
+    if not centres:
+        return None
+    # Weight larger, clearer faces more heavily while resisting single-frame jumps.
+    total = sum(item[2] for item in centres)
+    cx = sum(item[0] * item[2] for item in centres) / total
+    cy = sum(item[1] * item[2] for item in centres) / total
+    return (max(0.0, min(1.0, cx)), max(0.0, min(1.0, cy)), width, height)
+
 def score_highlights(words: list[dict[str, Any]], duration: float, energy: dict[int, float]) -> list[dict[str, Any]]:
     if not words:
         return []
@@ -272,6 +307,21 @@ def render_clip(job_id: str, request: RenderRequest) -> dict[str, Any]:
         width, height = 1080, 1080
     else:
         width, height = 1920, 1080
+    face_center = find_face_center(source, clip["start"], clip["end"])
+    if face_center:
+        center_x, center_y, source_width, source_height = face_center
+        scale = max(width / source_width, height / source_height)
+        scaled_width = int(round(source_width * scale))
+        scaled_height = int(round(source_height * scale))
+        crop_x = int(round(center_x * scaled_width - width / 2))
+        crop_y = int(round(center_y * scaled_height - height / 2))
+        crop_x = max(0, min(scaled_width - width, crop_x)) // 2 * 2
+        crop_y = max(0, min(scaled_height - height, crop_y)) // 2 * 2
+        framing = f"scale={scaled_width}:{scaled_height}:flags=lanczos,crop={width}:{height}:{crop_x}:{crop_y}"
+        smart_reframe = "Face-aware crop"
+    else:
+        framing = f"scale={width}:{height}:force_original_aspect_ratio=increase:flags=lanczos,crop={width}:{height}"
+        smart_reframe = "Centre crop (no clear face detected)"
     srt = folder / f"clip_{request.clip_index+1}.srt"
     rows = []
     clip_words = [w for w in job.get("words", []) if w["start"] >= clip["start"] and w["end"] <= clip["end"]]
@@ -284,17 +334,17 @@ def render_clip(job_id: str, request: RenderRequest) -> dict[str, Any]:
         rows.append(f"{len(rows)+1}\n{stamp(max(0,group[0]['start']-clip['start']))} --> {stamp(max(0,group[-1]['end']-clip['start']))}\n{' '.join(w['text'] for w in group)}\n")
     srt.write_text("\n".join(rows), encoding="utf-8")
     escaped = str(srt).replace("\\", "/").replace(":", r"\:").replace("'", r"\'")
-    vf = f"scale={width}:{height}:force_original_aspect_ratio=increase,crop={width}:{height},fps=30,fade=t=in:st=0:d=0.25,fade=t=out:st={max(0,duration-.25):.3f}:d=0.25,subtitles='{escaped}':force_style='FontName=Arial,FontSize=26,Outline=2,Shadow=1,Alignment=2,MarginV=120'"
+    vf = f"{framing},fps=30,fade=t=in:st=0:d=0.25,fade=t=out:st={max(0,duration-.25):.3f}:d=0.25,subtitles='{escaped}':force_style='FontName=Arial,FontSize=26,Outline=2,Shadow=1,Alignment=2,MarginV=120'"
     args = ["-ss", str(clip["start"]), "-i", str(source), "-t", str(duration), "-vf", vf, "-af", "loudnorm=I=-16:TP=-1.5:LRA=11,afade=t=in:st=0:d=0.2,afade=t=out:st="+str(max(0,duration-.25))+":d=0.25", "-c:v", "libx264", "-preset", "veryfast", "-crf", "21", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", str(output)]
     result = run_ffmpeg(args)
     if result.returncode != 0:
         # Some bundled FFmpeg builds omit libass; keep the video export usable without burned-in captions.
-        vf = f"scale={width}:{height}:force_original_aspect_ratio=increase,crop={width}:{height},fps=30,fade=t=in:st=0:d=0.25,fade=t=out:st={max(0,duration-.25):.3f}:d=0.25"
+        vf = f"{framing},fps=30,fade=t=in:st=0:d=0.25,fade=t=out:st={max(0,duration-.25):.3f}:d=0.25"
         args[args.index("-vf")+1] = vf
         result = run_ffmpeg(args)
     if result.returncode != 0 or not output.exists():
         raise HTTPException(status_code=500, detail="Render failed: " + result.stderr[-1000:])
-    return {"ok": True, "filename": output.name, "captions_burned_in": "subtitles=" in vf, "download": f"/jobs/{job_id}/clips/{request.clip_index}/download"}
+    return {"ok": True, "filename": output.name, "smart_reframe": smart_reframe, "captions_burned_in": "subtitles=" in vf, "download": f"/jobs/{job_id}/clips/{request.clip_index}/download"}
 
 @app.get("/jobs/{job_id}/clips/{clip_index}/download")
 def download_clip(job_id: str, clip_index: int) -> FileResponse:
