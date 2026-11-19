@@ -38,9 +38,9 @@ export default function Home() {
   canvas.width=baseDimensions[0]*scale;canvas.height=baseDimensions[1]*scale;
   const ctx=canvas.getContext("2d");
   if(!ctx){sourceStream.getTracks().forEach(t=>t.stop());alert("Could not create the export canvas.");return;}
-  const outputStream=canvas.captureStream(30);
+  let outputStream:MediaStream;try{outputStream=canvas.captureStream(30);}catch{sourceStream.getTracks().forEach(t=>t.stop());alert("Could not start the export canvas in this browser.");return;}
   let mixedAudioStream:MediaStream|null=null;
-  if(audioAsset&&musicAudioRef.current){
+  try{if(audioAsset&&musicAudioRef.current){
    const audioContext=audioContextRef.current||(audioContextRef.current=new AudioContext());
    if(!mainAudioSourceRef.current){mainAudioSourceRef.current=audioContext.createMediaElementSource(v);mainAudioSourceRef.current.connect(audioContext.destination);}
    if(!musicAudioSourceRef.current){musicAudioSourceRef.current=audioContext.createMediaElementSource(musicAudioRef.current);const previewGain=audioContext.createGain();previewGain.gain.value=musicVolume/100;musicPreviewGainRef.current=previewGain;musicAudioSourceRef.current.connect(previewGain);previewGain.connect(audioContext.destination);}
@@ -48,10 +48,10 @@ export default function Home() {
    if(musicGainRef.current){musicAudioSourceRef.current.disconnect(musicGainRef.current);musicGainRef.current.disconnect();}
    const gain=audioContext.createGain();gain.gain.value=musicVolume/100;musicGainRef.current=gain;musicAudioSourceRef.current.connect(gain);gain.connect(destination);mixedAudioStream=destination.stream;
    await audioContext.resume();mixedAudioStream.getAudioTracks().forEach(track=>outputStream.addTrack(track));
-  }else sourceStream.getAudioTracks().forEach(track=>outputStream.addTrack(track));
+  }else sourceStream.getAudioTracks().forEach(track=>outputStream.addTrack(track));}catch{sourceStream.getAudioTracks().forEach(track=>outputStream.addTrack(track));alert("Music mixing is unavailable here; exporting the source audio instead.");}
   const mime=["video/webm;codecs=vp9,opus","video/webm;codecs=vp8,opus","video/webm"].find(t=>MediaRecorder.isTypeSupported(t));
   if(!mime){sourceStream.getTracks().forEach(t=>t.stop());outputStream.getTracks().forEach(t=>t.stop());alert("No supported WebM recording format was found.");return;}
-  const recorder=new MediaRecorder(outputStream,{mimeType:mime,videoBitsPerSecond:Math.min(40000000,Math.max(8000000,canvas.width*canvas.height*5))});
+  let recorder:MediaRecorder;try{recorder=new MediaRecorder(outputStream,{mimeType:mime,videoBitsPerSecond:Math.min(40000000,Math.max(8000000,canvas.width*canvas.height*5))});}catch{sourceStream.getTracks().forEach(t=>t.stop());outputStream.getTracks().forEach(t=>t.stop());alert("This browser could not initialise the video encoder. Try WebM or a lower resolution.");return;}
   const chunks:BlobPart[]=[];let raf=0;let stopped=false;
   const draw=()=>{
    if(stopped)return;
