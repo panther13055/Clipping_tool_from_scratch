@@ -38,7 +38,7 @@ export default function Home() {
   const baseDimensions=ratio==="9:16"?[1080,1920]:ratio==="16:9"?[1920,1080]:[1080,1080];const scale=exportResolution==="4K"?2:1;
   canvas.width=baseDimensions[0]*scale;canvas.height=baseDimensions[1]*scale;
   const ctx=canvas.getContext("2d");
-  if(!ctx){sourceStream.getTracks().forEach(t=>t.stop());alert("Could not create the export canvas.");return;}
+  if(!ctx){sourceStream.getTracks().forEach(t=>t.stop());alert("Could not create the export canvas.");return;}ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality="high";
   let outputStream:MediaStream;try{outputStream=canvas.captureStream(30);}catch{sourceStream.getTracks().forEach(t=>t.stop());alert("Could not start the export canvas in this browser.");return;}
   let mixedAudioStream:MediaStream|null=null;
   try{if(audioAsset&&musicAudioRef.current){
