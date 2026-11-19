@@ -73,3 +73,10 @@
 
 .split-marker.selected{background:#ff6b6b;box-shadow:0 0 0 3px #ff6b6b33;z-index:5}
 .deleted-range{position:absolute;top:0;bottom:0;background:rgba(255,76,76,.14);border-left:1px dashed #ff7373;border-right:1px dashed #ff7373;pointer-events:none;z-index:1}
+
+.style-anime{color:#fff;text-shadow:2px 2px 0 #ff4fa3,-2px -2px 0 #4fc9ff;font-style:italic;letter-spacing:.035em}
+.style-news-flash{color:#fff;background:#cf253d;padding:5px 12px;border-left:5px solid #ffcf4a;font-weight:950;letter-spacing:.04em}
+.style-retro-wave{color:#ffd6fa;text-shadow:0 2px 0 #a32cbb,0 5px 14px #ff6bd6;letter-spacing:.04em}
+.style-subtitle-pro{color:#fff;background:rgba(7,12,20,.82);padding:7px 13px;border-radius:5px;font-weight:650;letter-spacing:.01em}
+.style-glitch-pop{color:#fff;text-shadow:-2px 0 #ff315d,2px 0 #2eeaff,0 3px 12px #000;font-weight:950}
+.style-minimal-mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#f2f5f7;font-weight:600;letter-spacing:.045em;text-shadow:0 2px 7px #000}
