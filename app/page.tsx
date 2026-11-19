@@ -42,7 +42,7 @@ export default function Home() {
   if(audioAsset&&musicAudioRef.current){
    const audioContext=audioContextRef.current||(audioContextRef.current=new AudioContext());
    if(!mainAudioSourceRef.current){mainAudioSourceRef.current=audioContext.createMediaElementSource(v);mainAudioSourceRef.current.connect(audioContext.destination);}
-   if(!musicAudioSourceRef.current)musicAudioSourceRef.current=audioContext.createMediaElementSource(musicAudioRef.current);
+   if(!musicAudioSourceRef.current){musicAudioSourceRef.current=audioContext.createMediaElementSource(musicAudioRef.current);const previewGain=audioContext.createGain();previewGain.gain.value=musicVolume/100;musicPreviewGainRef.current=previewGain;musicAudioSourceRef.current.connect(previewGain);previewGain.connect(audioContext.destination);}
    const destination=audioContext.createMediaStreamDestination();mainAudioSourceRef.current.connect(destination);
    if(musicGainRef.current){musicAudioSourceRef.current.disconnect(musicGainRef.current);musicGainRef.current.disconnect();}
    const gain=audioContext.createGain();gain.gain.value=musicVolume/100;musicGainRef.current=gain;musicAudioSourceRef.current.connect(gain);gain.connect(destination);mixedAudioStream=destination.stream;
