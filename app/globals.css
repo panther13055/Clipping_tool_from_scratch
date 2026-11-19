@@ -83,3 +83,5 @@
 
 .keyframe-marker{position:absolute;top:7px;width:8px;height:8px;transform:translateX(-50%) rotate(45deg);border:1px solid #0c1119;border-radius:1px;z-index:4;pointer-events:none}
 .game-keyframe{background:#56b4ff}.facecam-keyframe{top:19px;background:#f6b95d}
+
+.facecam-clip{background:#664b2d;border:1px solid #a5783f;color:#ffe0ad}
