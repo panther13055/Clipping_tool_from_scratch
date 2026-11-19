@@ -367,6 +367,20 @@ def run_live_capture(job_id: str, url: str) -> None:
             if stream_proc.poll() is not None or ffmpeg_proc.poll() is not None:
                 break
             stop_event.wait(4)
+        # Ensure the muxer has flushed its final partial segment before analysis.
+        if stream_proc and stream_proc.poll() is None:
+            stream_proc.terminate()
+            try:
+                stream_proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                stream_proc.kill()
+                stream_proc.wait(timeout=5)
+        if ffmpeg_proc and ffmpeg_proc.poll() is None:
+            try:
+                ffmpeg_proc.wait(timeout=30)
+            except subprocess.TimeoutExpired:
+                ffmpeg_proc.kill()
+                ffmpeg_proc.wait(timeout=5)
         # FFmpeg closes the final partial segment after the input ends.
         for segment_file in sorted(folder.glob("live_*.ts")):
             if str(segment_file) in processed:
