@@ -4,6 +4,7 @@ import json
 import os
 import re
 import subprocess
+import shutil
 import threading
 import time
 import uuid
@@ -239,6 +240,156 @@ def score_highlights(words: list[dict[str, Any]], duration: float, energy: dict[
             break
     return chosen
 
+
+def probe_duration(source: Path) -> float:
+    probe = run_ffmpeg(["-i", str(source), "-f", "null", "-"])
+    match = re.search(r"Duration: (\d+):(\d+):(\d+(?:\.\d+)?)", probe.stderr)
+    if not match:
+        return 0.0
+    return int(match.group(1))*3600 + int(match.group(2))*60 + float(match.group(3))
+
+def analyse_live_segment(job_id: str, source: Path) -> None:
+    job = JOBS.get(job_id)
+    if not job:
+        return
+    folder = source.parent
+    audio = folder / (source.stem + "_audio.wav")
+    result = run_ffmpeg(["-i", str(source), "-vn", "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", str(audio)])
+    if result.returncode != 0 or not audio.exists():
+        raise RuntimeError("Could not extract audio from live segment.")
+    model = get_model()
+    segments, _ = model.transcribe(str(audio), word_timestamps=True, vad_filter=True, beam_size=3)
+    words: list[dict[str, Any]] = []
+    transcript: list[str] = []
+    for segment in segments:
+        transcript.append(segment.text.strip())
+        if segment.words:
+            for word in segment.words:
+                words.append({"text": word.word.strip(), "start": round(float(word.start), 3), "end": round(float(word.end), 3)})
+        else:
+            words.append({"text": segment.text.strip(), "start": float(segment.start), "end": float(segment.end)})
+    duration = probe_duration(source)
+    if duration <= 0:
+        duration = max((word["end"] for word in words), default=0)
+    candidates = score_highlights(words, duration, audio_energy(audio))
+    for candidate in candidates:
+        candidate["source_path"] = str(source)
+        candidate["words"] = words
+        candidate["transcript"] = candidate.get("transcript", "")[:260]
+    with LOCK:
+        current = JOBS.get(job_id)
+        if not current:
+            return
+        combined = list(current.get("clips", [])) + candidates
+        combined.sort(key=lambda item: item.get("score", 0), reverse=True)
+        # Retain the strongest 24 unique moments across the ongoing broadcast.
+        kept: list[dict[str, Any]] = []
+        for candidate in combined:
+            duplicate = any(
+                candidate.get("source_path") == prior.get("source_path")
+                and max(0, min(candidate["end"], prior["end"]) - max(candidate["start"], prior["start"]))
+                    / max(1, min(candidate["end"]-candidate["start"], prior["end"]-prior["start"])) > .45
+                for prior in kept
+            )
+            if not duplicate:
+                candidate["id"] = str(len(kept) + 1)
+                kept.append(candidate)
+            if len(kept) >= 24:
+                break
+        current["clips"] = kept
+        current["live_segments_processed"] = int(current.get("live_segments_processed", 0)) + 1
+        current["stage"] = f"Live AI · {current['live_segments_processed']} segments analysed"
+        current["message"] = f"Found {len(kept)} ranked moments so far. Capture is still running."
+        current["progress"] = 0
+
+def run_live_capture(job_id: str, url: str) -> None:
+    folder = ROOT / job_id
+    folder.mkdir(parents=True, exist_ok=True)
+    stop_event = JOBS[job_id]["stop_event"]
+    streamlink = shutil.which("streamlink")
+    if not streamlink:
+        update(job_id, status="error", stage="Live capture unavailable", live_active=False,
+               message="Streamlink was not installed. Restart the local engine after pip installs requirements.")
+        return
+    stream_proc = None
+    ffmpeg_proc = None
+    processed: set[str] = set()
+    try:
+        update(job_id, status="processing", live_active=True, stage="Connecting to live stream",
+               message="Connecting to the active broadcast and opening a rolling local recording…",
+               progress=0, title="Live broadcast")
+        stream_proc = subprocess.Popen(
+            [streamlink, "--stdout", "--retry-streams", "5", url, "best"],
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, bufsize=0
+        )
+        if stream_proc.stdout is None:
+            raise RuntimeError("Could not open the live stream output.")
+        pattern = str(folder / "live_%05d.ts")
+        ffmpeg_proc = subprocess.Popen(
+            [FFMPEG, "-hide_banner", "-loglevel", "error", "-fflags", "+genpts",
+             "-i", "pipe:0", "-map", "0", "-c", "copy", "-f", "segment",
+             "-segment_time", "60", "-reset_timestamps", "1", "-segment_format", "mpegts", pattern],
+            stdin=stream_proc.stdout, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        )
+        stream_proc.stdout.close()
+        update(job_id, stage="Live capture running", message="Recording in 60-second chunks. AI scans each completed chunk.")
+        while True:
+            files = sorted(folder.glob("live_*.ts"))
+            for segment_file in files:
+                if str(segment_file) in processed:
+                    continue
+                # The newest segment may still be written; only analyse closed chunks.
+                if ffmpeg_proc.poll() is None and segment_file == (files[-1] if files else None):
+                    continue
+                try:
+                    if segment_file.stat().st_size < 128_000:
+                        processed.add(str(segment_file))
+                        continue
+                    analyse_live_segment(job_id, segment_file)
+                except Exception as segment_error:
+                    update(job_id, message=f"Skipped one live segment: {segment_error}")
+                processed.add(str(segment_file))
+            if stop_event.is_set():
+                if stream_proc.poll() is None:
+                    stream_proc.terminate()
+                try:
+                    stream_proc.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    stream_proc.kill()
+                try:
+                    ffmpeg_proc.wait(timeout=25)
+                except subprocess.TimeoutExpired:
+                    ffmpeg_proc.kill()
+                    ffmpeg_proc.wait(timeout=5)
+                break
+            if stream_proc.poll() is not None or ffmpeg_proc.poll() is not None:
+                break
+            stop_event.wait(4)
+        # FFmpeg closes the final partial segment after the input ends.
+        for segment_file in sorted(folder.glob("live_*.ts")):
+            if str(segment_file) in processed:
+                continue
+            try:
+                if segment_file.stat().st_size >= 128_000:
+                    analyse_live_segment(job_id, segment_file)
+            except Exception as segment_error:
+                update(job_id, message=f"Final segment could not be analysed: {segment_error}")
+            processed.add(str(segment_file))
+        clips = JOBS[job_id].get("clips", [])
+        if clips:
+            update(job_id, status="ready", live_active=False, stage="Live session analysed",
+                   progress=100, message=f"Capture finished. {len(clips)} ranked moments are ready to render.")
+        else:
+            update(job_id, status="error", live_active=False, stage="No highlights found",
+                   message="The stream ended without enough clear speech to score clips. Check audio and try again.")
+    except Exception as error:
+        update(job_id, status="error", live_active=False, stage="Live capture error", message=str(error))
+    finally:
+        for process in (stream_proc, ffmpeg_proc):
+            if process and process.poll() is None:
+                process.terminate()
+        update(job_id, live_active=False)
+
 def analyse_job(job_id: str, url: str) -> None:
     try:
         source = download_video(job_id, url)
@@ -276,34 +427,63 @@ def ingest(request: IngestRequest) -> dict[str, str]:
     raw = str(request.url)
     try:
         validate_source(raw)
-    except ValueError as error:
-        raise HTTPException(status_code=400, detail=str(error))
+        with YoutubeDL({"quiet": True, "no_warnings": True, "skip_download": True, "socket_timeout": 20}) as ydl:
+            info = ydl.extract_info(raw, download=False)
+    except Exception as error:
+        raise HTTPException(status_code=400, detail=f"Could not inspect this public video URL: {error}")
+    live_status = info.get("live_status")
+    is_live = bool(info.get("is_live")) or live_status == "is_live"
+    if live_status == "is_upcoming":
+        raise HTTPException(status_code=409, detail="This broadcast has not started yet. Paste its link again once it is live.")
     job_id = uuid.uuid4().hex[:12]
     with LOCK:
-        JOBS[job_id] = {"id": job_id, "status": "processing", "stage": "Queued", "progress": 0, "message": "Queued local analysis…", "clips": [], "created": time.time()}
+        JOBS[job_id] = {"id": job_id, "status": "processing", "stage": "Queued", "progress": 0,
+                        "message": "Queued local analysis…", "clips": [], "created": time.time(),
+                        "live_active": is_live, "live_segments_processed": 0, "stop_event": threading.Event()}
+    if is_live:
+        if urlparse(raw).hostname and any(x in (urlparse(raw).hostname or "") for x in ("youtube.com", "youtu.be", "twitch.tv")):
+            thread = threading.Thread(target=run_live_capture, args=(job_id, raw), daemon=True)
+            thread.start()
+            return {"job_id": job_id, "message": "Active livestream capture and rolling AI analysis started.", "mode": "live"}
+        update(job_id, status="error", live_active=False, stage="Unsupported live platform",
+               message="Active capture currently supports public YouTube and Twitch live streams.")
+        raise HTTPException(status_code=400, detail="Active live capture currently supports public YouTube and Twitch streams.")
     thread = threading.Thread(target=analyse_job, args=(job_id, raw), daemon=True)
     thread.start()
-    return {"job_id": job_id, "message": "Local VOD analysis started."}
+    return {"job_id": job_id, "message": "Local VOD analysis started.", "mode": "vod"}
+
+@app.post("/jobs/{job_id}/stop")
+def stop_live(job_id: str) -> dict[str, str]:
+    job = JOBS.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found.")
+    if not job.get("live_active"):
+        return {"ok": True, "message": "This job is not actively recording."}
+    job["stop_event"].set()
+    update(job_id, stage="Stopping live capture", message="Closing the recording cleanly and analysing the final chunk…")
+    return {"ok": True, "message": "Live capture is stopping. Final clips will be ranked shortly."}
 
 @app.get("/jobs/{job_id}")
 def job_status(job_id: str) -> dict[str, Any]:
     job = JOBS.get(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found. The local worker may have restarted.")
-    return {k: v for k, v in job.items() if k not in ("source", "words")}
+    safe = {k: v for k, v in job.items() if k not in ("source", "words", "stop_event")}
+    safe["clips"] = [{k: v for k, v in clip.items() if k not in ("words", "source_path")} for clip in job.get("clips", [])]
+    return safe
 
 @app.post("/jobs/{job_id}/render")
 def render_clip(job_id: str, request: RenderRequest) -> dict[str, Any]:
     job = JOBS.get(job_id)
-    if not job or job.get("status") != "ready":
-        raise HTTPException(status_code=409, detail="Wait for analysis to finish first.")
+    if not job or (job.get("status") != "ready" and not (job.get("live_active") and job.get("clips"))):
+        raise HTTPException(status_code=409, detail="Wait for the first live highlight or finish the analysis first.")
     clips = job.get("clips", [])
     if request.clip_index < 0 or request.clip_index >= len(clips):
         raise HTTPException(status_code=404, detail="Clip index not found.")
     if request.aspect_ratio not in ("9:16", "1:1", "16:9"):
         raise HTTPException(status_code=400, detail="Unsupported aspect ratio.")
     clip = clips[request.clip_index]
-    source = Path(job["source"])
+    source = Path(clip.get("source_path") or job["source"])
     folder = source.parent
     output = folder / f"clip_{request.clip_index+1}_{request.aspect_ratio.replace(':','x')}.mp4"
     duration = max(.5, clip["end"] - clip["start"])
@@ -330,7 +510,7 @@ def render_clip(job_id: str, request: RenderRequest) -> dict[str, Any]:
         smart_reframe = "Centre crop (no clear face detected)"
     srt = folder / f"clip_{request.clip_index+1}.srt"
     rows = []
-    clip_words = [w for w in job.get("words", []) if w["start"] >= clip["start"] and w["end"] <= clip["end"]]
+    clip_words = [w for w in clip.get("words", job.get("words", [])) if w["start"] >= clip["start"] and w["end"] <= clip["end"]]
     for index in range(0, len(clip_words), 6):
         group = clip_words[index:index+6]
         if not group: continue
@@ -357,7 +537,10 @@ def download_clip(job_id: str, clip_index: int) -> FileResponse:
     job = JOBS.get(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found.")
-    folder = Path(job["source"]).parent
+    clip = job.get("clips", [])[clip_index] if 0 <= clip_index < len(job.get("clips", [])) else None
+    if not clip:
+        raise HTTPException(status_code=404, detail="Clip index not found.")
+    folder = Path(clip.get("source_path") or job.get("source", str(ROOT / job_id / "source.mp4"))).parent
     matches = list(folder.glob(f"clip_{clip_index+1}_*.mp4"))
     if not matches:
         raise HTTPException(status_code=404, detail="Render this clip first.")
