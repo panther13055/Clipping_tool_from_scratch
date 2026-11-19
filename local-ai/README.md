@@ -9,7 +9,7 @@ For the easiest setup, extract the repository ZIP and double-click `START_CLIPFO
 1. Install Python 3.11 (64-bit).
 2. Open the repository folder and run `local-ai/START_WINDOWS.bat`.
 3. The first launch installs dependencies and downloads the Whisper base model when analysis first runs. Keep the terminal open.
-4. In ClipForge Studio, open **AI Clips**, paste a public YouTube/Twitch/Vimeo VOD link and choose **Import video link**.
+4. In ClipForge Studio, open **AI Editor**, paste a public YouTube or Twitch livestream/VOD link and choose **Connect stream / import VOD**. Active streams are captured in rolling 60-second chunks; the AI scans each completed chunk and updates ranked highlights while the stream continues. Enable automatic rendering to create and download new 9:16, square or landscape clips scoring 75+ as they are found. Use **Stop live capture & finish clips** to close the recording and analyse the final chunk.
 5. Wait for the local analysis to finish. Pick 9:16, 1:1 or 16:9 and choose **Render & download MP4**.
 
 The local API listens only on `127.0.0.1:8765`. Open `http://127.0.0.1:8765/docs` to inspect its API.
@@ -17,7 +17,9 @@ The local API listens only on `127.0.0.1:8765`. Open `http://127.0.0.1:8765/docs
 ## What it does
 
 - Downloads public archived VODs using yt-dlp (up to 6 hours, capped at 1080p).
-- Captures active public YouTube and Twitch livestreams with Streamlink, writing rolling 60-second MPEG-TS chunks without re-encoding the source.\n- Transcribes and scores each completed live chunk while capture continues. The strongest 24 moments are kept; high-scoring highlights can be auto-rendered before the broadcast ends.\n- Stop capture from the app to close the stream cleanly and analyse the final partial chunk. Scheduled/upcoming streams are not auto-started.
+- Captures active public YouTube and Twitch livestreams with Streamlink, writing rolling 60-second MPEG-TS chunks without re-encoding the source.
+- Transcribes and scores each completed live chunk while capture continues. The strongest 24 moments are kept; high-scoring highlights can be auto-rendered before the broadcast ends.
+- Stop capture from the app to close the stream cleanly and analyse the final partial chunk. Scheduled/upcoming streams are not auto-started.
 - Transcribes speech locally with faster-whisper base and word timestamps.
 - Scores moments using transcript hooks, speaking pace, lexical variety and audio energy, with visible reasons. The score is an explainable ranking signal, not a trained virality predictor.
 - Detects faces locally with OpenCV and centres vertical/square crops around the dominant face when one is visible; falls back to a centred crop when it cannot find a face.
