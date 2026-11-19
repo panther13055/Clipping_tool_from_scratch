@@ -40,7 +40,7 @@ These are free/open model and runtime downloads; no paid API key is required. Mo
 
 ClipForge includes an optional Windows local AI worker in `local-ai/`. Run `local-ai/START_WINDOWS.bat`, keep its terminal open, then use the AI Editor tab to submit a public archived YouTube, Twitch or Vimeo VOD you own or are authorised to process. The worker uses yt-dlp, faster-whisper (CPU), and FFmpeg to download the VOD, transcribe it, rank candidate moments with explainable transcript/audio signals, and render individual H.264 MP4 clips in 9:16, 1:1 or 16:9. First launch installs free dependencies and downloads the Whisper base model. See `local-ai/README.md`. On Windows, `START_CLIPFORGE_WINDOWS.bat` starts both the web app and the local AI worker in separate terminals. The worker uses OpenCV face detection to centre the crop on a visible face when possible and renders individual MP4s; the top five can be batch-rendered.
 
-This local worker rejects active/upcoming live streams and does not bypass private access, DRM, login walls or platform restrictions. Analyse a replay after it becomes available. It runs on your PC, not on Vercel; local processing avoids paid inference APIs.
+The local worker does not bypass private access, DRM, login walls or platform restrictions. Live capture depends on public stream availability and supported platform formats. It runs on your PC, not on Vercel; local processing avoids paid inference APIs.
 
 ## Current limitations
 
