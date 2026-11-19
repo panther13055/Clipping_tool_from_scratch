@@ -274,6 +274,7 @@ def analyse_live_segment(job_id: str, source: Path) -> None:
     candidates = score_highlights(words, duration, audio_energy(audio))
     for candidate in candidates:
         candidate["source_path"] = str(source)
+        candidate["key"] = f"{source.name}:{int(candidate['start'] * 1000)}"
         candidate["words"] = words
         candidate["transcript"] = candidate.get("transcript", "")[:260]
     with LOCK:
@@ -471,6 +472,20 @@ def job_status(job_id: str) -> dict[str, Any]:
     safe = {k: v for k, v in job.items() if k not in ("source", "words", "stop_event")}
     safe["clips"] = [{k: v for k, v in clip.items() if k not in ("words", "source_path")} for clip in job.get("clips", [])]
     return safe
+
+class RenderByKeyRequest(BaseModel):
+    clip_key: str
+    aspect_ratio: str = "9:16"
+
+@app.post("/jobs/{job_id}/render-key")
+def render_clip_by_key(job_id: str, request: RenderByKeyRequest) -> dict[str, Any]:
+    job = JOBS.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found.")
+    index = next((i for i, clip in enumerate(job.get("clips", [])) if clip.get("key") == request.clip_key), None)
+    if index is None:
+        raise HTTPException(status_code=404, detail="This live highlight is no longer in the current ranked list.")
+    return render_clip(job_id, RenderRequest(clip_index=index, aspect_ratio=request.aspect_ratio))
 
 @app.post("/jobs/{job_id}/render")
 def render_clip(job_id: str, request: RenderRequest) -> dict[str, Any]:
