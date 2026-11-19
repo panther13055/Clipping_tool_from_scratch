@@ -8,6 +8,7 @@ import threading
 import time
 import uuid
 import wave
+import numpy as np
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -130,11 +131,10 @@ def audio_energy(audio: Path) -> dict[int, float]:
                 if not raw:
                     break
                 if width == 2:
-                    import array
-                    samples = array.array("h")
-                    samples.frombytes(raw)
-                    if samples:
-                        values[second] = min(1.0, (sum(x*x for x in samples) / len(samples)) ** 0.5 / 32768)
+                    samples = np.frombuffer(raw, dtype=np.int16)
+                    if samples.size:
+                        rms = float(np.sqrt(np.mean(samples.astype(np.float32) ** 2)))
+                        values[second] = min(1.0, rms / 32768.0)
                 second += 1
     except Exception:
         return {}
