@@ -7,9 +7,9 @@ For the easiest setup, extract the repository ZIP and double-click `START_CLIPFO
 ## Start on Windows
 
 1. Install Python 3.11 (64-bit).
-2. Open the repository folder and run `local-ai/START_WINDOWS.bat`.
+2. Double-click `START_CLIPFORGE_WINDOWS.bat` in the repository root (requires Node.js and Python 3.11).
 3. The first launch installs dependencies and downloads the Whisper base model when analysis first runs. Keep the terminal open.
-4. In ClipForge Studio, open **AI Editor**, paste a public YouTube or Twitch livestream/VOD link and choose **Connect stream / import VOD**. Active streams are captured in rolling 60-second chunks; the AI scans each completed chunk and updates ranked highlights while the stream continues. Enable automatic rendering to create and download new 9:16, square or landscape clips scoring 75+ as they are found. Use **Stop live capture & finish clips** to close the recording and analyse the final chunk.
+4. In ClipForge Studio, open **AI Editor**, paste a public YouTube or Twitch livestream/VOD link and choose **Connect stream / import VOD**. Active streams are captured in rolling 60-second chunks; the AI scans each completed chunk and updates ranked highlights while the stream continues. Enable automatic rendering to create and download new 9:16, square or landscape clips scoring 70+ as they are found. Use **Stop live capture & finish clips** to close the recording and analyse the final chunk.
 5. Wait for the local analysis to finish. Pick 9:16, 1:1 or 16:9 and choose **Render & download MP4**.
 
 The local API listens only on `127.0.0.1:8765`. Open `http://127.0.0.1:8765/docs` to inspect its API.
